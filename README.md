@@ -8,6 +8,9 @@ Time series body data inserted to MongoDB:
   3. Hands
   3. Lean
 
+Develop Environment:
+Visual Studio 2013 Ultimate on Win10, MongoDB 3.0 on Ubuntu 16.04 LTS
+
 C# MongoDB Driver:
   mongo-C#-Driver-2.3.0 <https://mongodb.github.io/mongo-csharp-driver/>
 
