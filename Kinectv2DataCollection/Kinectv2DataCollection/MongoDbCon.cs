@@ -25,7 +25,7 @@ namespace Kinectv2DataCollection
         public void insert(string jsonString)
         {
             MongoDB.Bson.BsonDocument bsonDoc = MongoDB.Bson.Serialization.BsonSerializer.Deserialize<BsonDocument>(jsonString);
-            var collection = _database.GetCollection<BsonDocument>("asdset");
+            var collection = _database.GetCollection<BsonDocument>("elderly_home_set");
             collection.InsertOne(bsonDoc);
         }
 
