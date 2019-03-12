@@ -83,21 +83,24 @@ namespace Kinectv2DataCollection
 
         float height = 0;
 
+        int action_class;
         string kid_name;
         int kid_stu_id;
         string kid_group;
         string kid_gender;
-        string kid_birthday;
+        int kid_age;
+        int kid_weight;
+        int kid_height;
 
         ConcurrentDictionary<int, MapedValue> data = new ConcurrentDictionary<int, MapedValue>();
         Thread recordData = null;
-        int kid_id;
+        int kid_id = 0;
         int duration = 0;
         System.Windows.Forms.Timer t;
         bool isRunning;
 
         MongoDbCon mongoCon = new MongoDbCon();
-        protected String connectionString = "mongodb://192.168.142.128:27017";
+        protected String connectionString = "mongodb://158.132.255.154:27017";
         protected String mongo_DB = "test";
 
         public MainWindow()
@@ -172,7 +175,7 @@ namespace Kinectv2DataCollection
                     users = bodies.Where(s => s.IsTracked.Equals(true)).ToList();
                     if (countBodyArrivedFrames > 0 && users.Count > 0)
                     {
-
+                        //populate the skeletons and highlight the selected one with kid_id
                         this.kinectBodyView.UpdateBodyFrame(this.bodies);
                         //    Console.WriteLine(body.IsTracked);
                         MapedValue mapedValue = new MapedValue();
@@ -204,7 +207,7 @@ namespace Kinectv2DataCollection
             //When there is skeleton data in the Dictionary
             while (true)
             {
-                Thread.Sleep(34);
+                Thread.Sleep(120);
                 if (data.Count > 0)
                 {
                     MapedValue mapedValue_temp = data.FirstOrDefault(x => x.Key == framecount).Value;
@@ -214,16 +217,24 @@ namespace Kinectv2DataCollection
 
                     //Dictionary<JointType, Point> jointPoints = new Dictionary<JointType, Point>();
 
-                    jointsFrames += "{\"count\":"                + framecount + 
-                                    ",\"datetime\":ISODate(\""   + mapedValue_temp.time +
-                                    "\"),\"name\":\""            + kid_name +
-                                    "\",\"stu_id\":\""           + kid_stu_id +
-                                    "\",\"group\":\""            + kid_group +
-                                    "\",\"gender\":\""           + kid_gender +
-                                    "\",\"birthday\":\""         + kid_birthday +
-                                    "\",\"skeletons\":[{\"id\":0,\"joints\":[";
+                    jointsFrames += "{\"datetime\":ISODate(\"" + mapedValue_temp.time +
+                                    "\"),\"name\":\""          + kid_name +
+                                    "\",\"count\":"            + framecount +
+                                    ",\"action\":"             + action_class +
+                                    ",\"sub_id\":"             + kid_stu_id +
+                                    ",\"group\":\""            + kid_group +
+                                    "\",\"gender\":\""         + kid_gender +
+                                     //"\",\"birthday\":\""         + kid_birthday +
+                                    "\",\"age\":"              + kid_age +
+                                    ",\"weight\":"             + kid_weight +
+                                    ",\"height\":"             + kid_height +
+                                    ",\"skeletons\":[{\"id\":0,\"joints\":[";
+
+                    //constuct the selected skeleton.
                     jointsFrames += structureSkeletonJson(mapedValue_temp.bodies[kid_id], mapedValue_temp.A, mapedValue_temp.B, mapedValue_temp.C, mapedValue_temp.D);
                     
+                    /*
+                    //check if there is more than one skeleton in the video.
                     users.RemoveAt(kid_id);
                     users = users.Where(s => s.IsTracked.Equals(true)).ToList();
                     if (users.Count > 0 && users[0].IsTracked == true)
@@ -232,12 +243,14 @@ namespace Kinectv2DataCollection
                         jointsFrames += ",{\"id\":1,\"joints\":[";
                         jointsFrames += structureSkeletonJson(users[0], mapedValue_temp.A, mapedValue_temp.B, mapedValue_temp.C, mapedValue_temp.D);
                     }
+                    */
                     jointsFrames += "]}";
 
-                    Console.WriteLine("Frame " + framecount + ": " + jointsFrames);
+                    //Console.WriteLine("Frame " + framecount + ": " + jointsFrames);
+                    Console.WriteLine("Frame: " + framecount);
 
                     //Insert record to MongoDB
-                   // mongoCon.insert(jointsFrames);
+                    mongoCon.insert(jointsFrames);
 
                     jointsFrames = "";
                     data.TryRemove(framecount, out mapedValue_temp);
@@ -256,7 +269,6 @@ namespace Kinectv2DataCollection
                         lbl_insert_progress.Content = "Inserted to MongoDB!";
                         recordData.Abort();
                     }));
-
                 } 
             }
         }
@@ -405,18 +417,56 @@ namespace Kinectv2DataCollection
         private void btn_RecordSwitch_Click(object sender, RoutedEventArgs e)
         {
             skeletonFocus();
-            if (txt_kid_name.Text.ToString() == "" || txt_kid_id.Text.ToString() == "" || if_special.Text.ToString() == "" || cb_kid_gender.Text.ToString() == "" || dp_kid_birthday.SelectedDate > DateTime.Now )
+            if (txt_kid_name.Text.ToString() == "" || txt_kid_id.Text.ToString() == "" || if_special.Text.ToString() == "" || cb_kid_gender.Text.ToString() == "" || txt_age.Text.ToString() == "" || txt_weight.Text.ToString() == "" || txt_height.Text.ToString() == "")//dp_kid_birthday.SelectedDate > DateTime.Now )
             {
                 System.Windows.Forms.MessageBox.Show("Kid's info. is not completed!");
                 return;
             }
             if (txt_duration == null || txt_duration.Text == "" ) { System.Windows.Forms.MessageBox.Show("Please set the duration!"); return; }
 
-            kid_name = txt_kid_name.Text.ToString();
+            action_class = comb_action.SelectedIndex + 1;
             kid_stu_id = Int32.Parse(txt_kid_id.Text);
-            kid_group = if_special.Text.ToString() == "Typical Control" ? "T" : "S";
-            kid_gender = cb_kid_gender.Text.ToString() == "Boy"? "B":"G";
-            kid_birthday = dp_kid_birthday.SelectedDate.ToString();
+            /*
+            kid_name = txt_kid_name.Text.ToString();
+            kid_group = if_special.Text.ToString() == "Normal" ? "N" : "D";
+            kid_gender = cb_kid_gender.Text.ToString() == "Male" ? "M":"F";
+            //kid_birthday = dp_kid_birthday.SelectedDate.ToString();
+            kid_age = Int32.Parse(txt_age.Text);
+            kid_weight = Int32.Parse(txt_weight.Text);
+            kid_height = Int32.Parse(txt_height.Text);
+            */
+            // for elderly home set project
+            switch (Int32.Parse(txt_kid_id.Text))
+            {
+                case 1: kid_name = "Gao Zhanglin"; kid_group = "N"; kid_gender = " M"; kid_age = 76; kid_weight = 140; kid_height = 168; break;
+                case 2: kid_name = "Shi Xiugui"; kid_group = "D"; kid_gender = " M"; kid_age = 72; kid_weight = 132; kid_height = 180; break;
+                case 3: kid_name = "Zhang Jianlu"; kid_group = "D"; kid_gender = " M"; kid_age = 60; kid_weight = 107; kid_height = 172; break;
+                case 4: kid_name = "Du Shichao"; kid_group = "N"; kid_gender = " M"; kid_age = 68; kid_weight = 120; kid_height = 160; break;
+                case 5: kid_name = "Pan Zaosheng"; kid_group = "N"; kid_gender = " M"; kid_age = 62; kid_weight = 140; kid_height = 165; break;
+                case 6: kid_name = "Shen Caizhen"; kid_group = "D"; kid_gender = " F"; kid_age = 72; kid_weight = 102; kid_height = 157; break;
+                case 7: kid_name = "Shi Yaxuan"; kid_group = "N"; kid_gender = " F"; kid_age = 68; kid_weight = 108; kid_height = 158; break;
+                case 8: kid_name = "Yong Yongfan"; kid_group = "N"; kid_gender = " M"; kid_age = 92; kid_weight = 110; kid_height = 165; break;
+                case 9: kid_name = "Guan Wanzhen"; kid_group = "N"; kid_gender = " F"; kid_age = 86; kid_weight = 110; kid_height = 163; break;
+                case 10: kid_name = "Yong Xiang"; kid_group = "N"; kid_gender = " M"; kid_age = 54; kid_weight = 120; kid_height = 162; break;
+                case 11: kid_name = "Zhang Bosheng"; kid_group = "N"; kid_gender = " M"; kid_age = 67; kid_weight = 170; kid_height = 185; break;
+                case 12: kid_name = "Yu Baojin"; kid_group = "D"; kid_gender = " M"; kid_age = 83; kid_weight = 130; kid_height = 170; break;
+                case 13: kid_name = "Yu Meifang"; kid_group = "D"; kid_gender = " M"; kid_age = 81; kid_weight = 96; kid_height = 151; break;
+                case 14: kid_name = "Zhou Wenhai"; kid_group = "D"; kid_gender = " M"; kid_age = 64; kid_weight = 130; kid_height = 172; break;
+                case 15: kid_name = "Pan Balin"; kid_group = "D"; kid_gender = " M"; kid_age = 67; kid_weight = 140; kid_height = 170; break;
+                case 16: kid_name = "Hu Jianmei"; kid_group = "N"; kid_gender = " F"; kid_age = 57; kid_weight = 138; kid_height = 156; break;
+                case 17: kid_name = "Xia Zaichuan"; kid_group = "N"; kid_gender = " M"; kid_age = 70; kid_weight = 188; kid_height = 182; break;
+                case 18: kid_name = "Zhang Yalan"; kid_group = "N"; kid_gender = " F"; kid_age = 56; kid_weight = 127; kid_height = 158; break;
+                case 19: kid_name = "Gao Maoguan"; kid_group = "N"; kid_gender = " M"; kid_age = 84; kid_weight = 121; kid_height = 175; break;
+                case 20: kid_name = "Yang Lianchen"; kid_group = "N"; kid_gender = " F"; kid_age = 55; kid_weight = 110; kid_height = 160; break;
+                case 21: kid_name = "Dong Xinhua"; kid_group = "N"; kid_gender = " F"; kid_age = 77; kid_weight = 94; kid_height = 161; break;
+                case 22: kid_name = "Gao Chunen"; kid_group = "N"; kid_gender = " F"; kid_age = 60; kid_weight = 116; kid_height = 163; break;
+                case 23: kid_name = "Wang Xuezhen"; kid_group = "N"; kid_gender = " F"; kid_age = 55; kid_weight = 115; kid_height = 162; break;
+                case 24: kid_name = "Zhu Fenge"; kid_group = "N"; kid_gender = " F"; kid_age = 66; kid_weight = 130; kid_height = 163; break;
+                case 25: kid_name = "Pan Fendi"; kid_group = "N"; kid_gender = " F"; kid_age = 58; kid_weight = 132; kid_height = 161; break;
+                default:
+                    break;
+            }
+
             if (this.bodies[kid_id].IsTracked == true)
             {
 
